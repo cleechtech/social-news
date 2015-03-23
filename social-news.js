@@ -1,23 +1,62 @@
+
+// Create news collection in MongoDB (available client and server)
+News = new Mongo.Collection("news");
+
+Meteor.methods({
+	addNews: function(title, url){
+		News.insert({
+			title: title,
+			url: url,
+			urlTitle: title.replace(/\s/g, '-'),	// creates slug
+			dateAdded: new Date()
+		});
+	}
+})
+
+// Client
 if (Meteor.isClient) {
-  // counter starts at 0
-  Session.setDefault('counter', 0);
-
-  Template.hello.helpers({
-    counter: function () {
-      return Session.get('counter');
+  Template.allNewsView.helpers({
+    news: function(){
+      return News.find({},{sort: {dateAdded: -1}});
     }
   });
 
-  Template.hello.events({
-    'click button': function () {
-      // increment the counter when button is clicked
-      Session.set('counter', Session.get('counter') + 1);
-    }
+  Template.addNews.events({
+  	'submit .addNewsForm': function(e){
+  		var title = e.target.title.value;
+  		var url = e.target.url.value;
+
+  		if (!title || !url){ return false; }
+
+  		Meteor.call('addNews', title, url);
+  		Router.go('news.all');
+  		return false;
+  	}
   });
 }
 
-if (Meteor.isServer) {
-  Meteor.startup(function () {
-    // code to run on server at startup
-  });
-}
+// Routing
+Router
+	.route('/', function(){
+	  this.render('allNewsView');
+	}, { name:'news.all' });
+Router
+	.route('/news/add', function(){
+		this.render('addNews');
+	}, { name: 'news.add' });
+Router
+	.route('/news/:title', function(){
+		this.render('newsView', {
+			data: function(){
+				return News.findOne({ urlTitle: this.params.title });
+			}
+		})
+	}, { name: 'news.single' });
+
+
+// Server
+// if (Meteor.isServer) {
+//   Meteor.startup(function(){
+
+//   });
+// }
